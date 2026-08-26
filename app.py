@@ -2,29 +2,34 @@ import json
 import urllib.parse
 import urllib.request
 import os
+import time
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 BASE_URL = "https://api.jgrants-portal.go.jp/exp/v1/public/subsidies"
 
-def generate_ai_text(prompt):
+def generate_ai_text(prompt, retries=2):
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
         return "<p>※Gemini APIキーを設定すると、ここにAIによる詳細解説文が自動生成されます。</p>"
     
-    # 2026年現在の安定エンドポイント (gemini-2.0-flash)
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
     
-    try:
-        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=15) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            return res_data["candidates"][0]["content"]["parts"][0]["text"]
-    except Exception as e:
-        print(f"Gemini API Error: {e}")
-        return "<p>AI解説の生成中にエラーが発生しました。</p>"
+    for attempt in range(retries + 1):
+        try:
+            # タイムアウトを 40 秒に延長
+            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=40) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                return res_data["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            if attempt < retries:
+                time.sleep(2) # 2秒待って再試行
+                continue
+            print(f"Gemini API Error: {e}")
+            return "<p>AI解説の生成中にエラーが発生しました。</p>"
 
 params = {
     "keyword": "IT",
