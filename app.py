@@ -31,6 +31,7 @@ try:
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f8f9fa; color: #333; }
         .container { max-width: 900px; margin: 0 auto; }
         h1 { font-size: 1.8em; margin-bottom: 20px; color: #1a252f; border-bottom: 2px solid #0056b3; padding-bottom: 10px; }
+        .ad-banner { text-align: center; margin: 25px 0; }
         .card { background: #fff; border: 1px solid #e1e4e8; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .title { font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }
         .title a { color: #0056b3; text-decoration: none; }
@@ -42,6 +43,13 @@ try:
 <body>
     <div class="container">
         <h1>現在募集中の補助金一覧</h1>
+
+        <!-- A8.net バナー広告 -->
+        <div class="ad-banner">
+            <a href="https://px.a8.net/svt/ejp?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" rel="nofollow">
+            <img border="0" width="336" height="280" alt="" src="https://www29.a8.net/svt/bgt?aid=260826388510&wid=001&eno=01&mid=s00000021185002032000&mc=1"></a>
+            <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" alt="">
+        </div>
 """
 
     if not subsidies:
