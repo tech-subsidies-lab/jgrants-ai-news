@@ -3,16 +3,15 @@ import urllib.parse
 import urllib.request
 import os
 
-# --- 設定項目 ---
-# 環境変数から取得、または直接 "AIzaSy..." を指定
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 BASE_URL = "https://api.jgrants-portal.go.jp/exp/v1/public/subsidies"
 
 def generate_ai_text(prompt):
-    if GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
+    if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
         return "<p>※Gemini APIキーを設定すると、ここにAIによる詳細解説文が自動生成されます。</p>"
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # 2026年現在の安定エンドポイント (gemini-2.0-flash)
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
@@ -44,7 +43,6 @@ try:
 
     subsidies = data.get("result", [])
 
-    # A8広告パーツ
     ad_code = """
     <div class="ad-banner" style="text-align: center; margin: 25px 0;">
         <a href="https://px.a8.net/svt/ejp?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" rel="nofollow">
@@ -53,7 +51,6 @@ try:
     </div>
     """
 
-    # トップページHTML作成
     html_content = f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -91,7 +88,6 @@ try:
 
         detail_filename = f"subsidy-{subsidy_id}.html"
 
-        # --- 個別記事ページの自動出力 ---
         prompt = f"補助金名「{title}」の概要です：「{target_summary}」。この記事について、どんな企業や事業者におすすめか、申請するメリットを簡潔にわかりやすく日本語HTMLタグ（<h3>, <p>, <ul>等）を含めて解説してください。"
         ai_article = generate_ai_text(prompt)
 
@@ -115,7 +111,7 @@ try:
         <a href="index.html" class="back-link">← 一覧に戻る</a>
         <h1>{title}</h1>
         
-        {ad_code} <!-- ヘッダー下広告 -->
+        {ad_code}
 
         <div class="meta-box">
             <p><strong>制度名:</strong> {inst_name}</p>
@@ -126,13 +122,13 @@ try:
         <h2>AIによるポイント解説</h2>
         {ai_article}
 
-        {ad_code} <!-- 記事直下広告 -->
+        {ad_code}
 
         <p style="text-align: center;">
             <a href="https://www.jgrants-portal.go.jp/subsidy/{subsidy_id}" target="_blank" rel="noopener" class="btn">jGrantsで公式申請ページを見る</a>
         </p>
 
-        {ad_code} <!-- フッター上広告 -->
+        {ad_code}
     </div>
 </body>
 </html>"""
@@ -140,7 +136,6 @@ try:
         with open(detail_filename, "w", encoding="utf-8") as f:
             f.write(detail_html)
 
-        # トップページ用カード構築
         inst_html = f"<span><strong>制度名:</strong> {inst_name}</span> | " if inst_name else ""
         html_content += f"""
         <div class="card">
