@@ -8,7 +8,7 @@ import re
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 BASE_URL = "https://api.jgrants-portal.go.jp/exp/v1/public/subsidies"
 
-def generate_ai_text(prompt, retries=2):
+def generate_ai_text(prompt, retries=3):
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
         return "<p>※Gemini APIキーを設定すると、ここにAIによる詳細解説文が自動生成されます。</p>"
     
@@ -24,12 +24,20 @@ def generate_ai_text(prompt, retries=2):
             with urllib.request.urlopen(req, timeout=30) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 return res_data["candidates"][0]["content"]["parts"][0]["text"]
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                print(f"429 Too Many Requests 発生。15秒待機してリトライします... (試行 {attempt + 1}/{retries + 1})")
+                time.sleep(15)
+            else:
+                print(f"HTTP Error: {e.code}")
+                time.sleep(3)
         except Exception as e:
             if attempt < retries:
-                time.sleep(2)
+                time.sleep(3)
                 continue
             print(f"Gemini API Error: {e}")
             return "<p>AI解説の生成中にエラーが発生しました。</p>"
+    return "<p>AI解説の生成中にエラーが発生しました。</p>"
 
 params = {
     "keyword": "IT",
@@ -105,7 +113,7 @@ try:
 出力は上記の解説部分のHTMLコードのみにしてください。
 """
         ai_article = generate_ai_text(prompt)
-        time.sleep(1)
+        time.sleep(3) # API制限回避（安全のため3秒待機）
 
         clean_summary = target_summary.replace("<", "").replace(">", "")[:110]
         meta_desc = f"{title}の概要・活用メリット・申請手順を徹底解説。{clean_summary}..."
@@ -207,7 +215,7 @@ try:
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    print("高速生成＆SEO・目次付きページの自動作成が完了しました。")
+    print("429回避処理付きのページ作成が完了しました。")
 
 except Exception as e:
     print(f"エラーが発生しました: {e}")
