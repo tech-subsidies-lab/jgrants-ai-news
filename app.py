@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from string import Template
 import time
 import urllib.parse
@@ -86,7 +87,7 @@ try:
     subsidies = data.get("result", [])[:10]
 
     ad_code = """
-    <div class="ad-banner" style="text-align: center; margin: 25px 0;">
+    <div class="ad-banner" style="text-align: center; margin: 30px 0;">
         <a href="https://px.a8.net/svt/ejp?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" rel="nofollow">
         <img border="0" width="336" height="280" alt="おすすめサービス" src="https://www29.a8.net/svt/bgt?aid=260826388510&wid=001&eno=01&mid=s00000021185002032000&mc=1"></a>
         <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" alt="">
@@ -99,17 +100,69 @@ try:
     for item in subsidies:
         subsidy_id = item.get("id", "")
         title = item.get("title", "名称なし")
-        inst_name = item.get("institution_name", "公的機関")
+        inst_name = item.get("institution_name", "")
         target_area = item.get("target_area_search", "全国")
         end_date = item.get("acceptance_end_datetime", "不明")
-        target_summary = item.get(
-            "target_summary", "詳細情報は公募要領をご確認ください。"
-        )
+        target_summary = item.get("target_summary", "")
 
         if end_date != "不明" and "T" in end_date:
             end_date = end_date.split("T")[0]
 
         detail_filename = f"subsidy-{subsidy_id}.html"
+
+        print(f"生成中: {title[:20]}...")
+
+        # Prompt with dynamic pain points generation
+        prompt = f"""
+補助金「{title}」（概要：{target_summary}）についてのWeb解説記事を作成してください。
+以下の構成で、指定のマークアップタグを用いて出力してください。
+
+---
+【1. お悩みリスト】
+この補助金の対象者（企業・事業者）が抱えていそうな具体的なお悩みを3つ作成し、以下の形式で出力してください。
+<PAIN_POINTS>
+- 悩み1
+- 悩み2
+- 悩み3
+</PAIN_POINTS>
+
+【2. 解説本文】
+以下の3セクション構成で、HTMLタグ（<p>, <h3>, <ul>, <li>）を用いてまとめて出力してください。
+・【はじめに】: 読者の関心を引き、どのような補助金かを簡潔に解説（<p>2〜3文）
+・【詳細解説】: どのような企業・事業者におすすめか、申請・導入のメリット、活用事例を具体的に解説（<h3>や<ul>を使用）
+・【まとめ】: 申請に向けた注意点やアドバイス（<p>2〜3文）
+---
+
+出力は上記のタグ・HTML部分のみにしてください。
+"""
+        raw_response = generate_ai_text(prompt)
+        time.sleep(4)
+
+        # お悩みリスト（PAIN_POINTS）の抽出
+        pain_points_html = "<li>IT導入や事業課題の解決を目指している</li><li>申請に活用できる補助金情報を探している</li><li>費用の負担を軽減してDX化を進めたい</li>"
+        ai_article = raw_response
+
+        if "<PAIN_POINTS>" in raw_response and "</PAIN_POINTS>" in raw_response:
+            parts = raw_response.split("</PAIN_POINTS>")
+            pain_block = parts[0].replace("<PAIN_POINTS>", "").strip()
+            ai_article = parts[1].strip()
+
+            items = [
+                line.strip("- ").strip()
+                for line in pain_block.split("\n")
+                if line.strip()
+            ]
+            if len(items) >= 3:
+                pain_points_html = "".join(
+                    [f"<li>{item}</li>" for item in items[:3]]
+                )
+
+        # トップ画面用：AI解説の「はじめに」からプレーンテキストを抽出して要約に使う
+        plain_text = re.sub(r"<[^>]+>", "", ai_article).strip()
+        plain_text = re.sub(r"\s+", " ", plain_text)
+        short_summary = (
+            plain_text[:110] + "..." if len(plain_text) > 110 else plain_text
+        )
 
         clean_summary = (
             target_summary.replace("<", "")
@@ -117,35 +170,27 @@ try:
             .replace("\n", "")
             .strip()
         )
-        short_summary = (
-            clean_summary[:70] + "..."
-            if len(clean_summary) > 70
-            else clean_summary
-        )
-
-        print(f"生成中: {title[:20]}...")
-        prompt = f"""
-補助金「{title}」（概要：{target_summary}）についてのWeb解説記事を作成してください。
-以下の3セクション構成で、HTMLタグ（<p>, <h3>, <ul>, <li>）を用いてまとめて出力してください。
-
-1. 【はじめに】: 読者の関心を引き、どのような補助金かを簡潔に解説（<p>2〜3文）
-2. 【詳細解説】: どのような企業・事業者におすすめか、申請・導入のメリット、活用事例を具体的に解説（<h3>や<ul>を使用）
-3. 【まとめ】: 申請に向けた注意点やアドバイス（<p>2〜3文）
-
-出力は上記の解説部分のHTMLコードのみにしてください。
-"""
-        ai_article = generate_ai_text(prompt)
-        time.sleep(4)
-
         meta_desc = f"{title}の概要・活用メリット・申請手順を徹底解説。{clean_summary[:100]}..."
+
+        # 実施機関名の表示分岐（Noneや空の場合は非表示）
+        inst_html_detail = ""
+        inst_html_card = ""
+        if inst_name and inst_name.lower() != "none":
+            inst_html_detail = (
+                f"<p><strong>実施機関・制度名:</strong> {inst_name}</p>"
+            )
+            inst_html_card = (
+                f"<span><strong>制度名:</strong> {inst_name}</span> | "
+            )
 
         detail_html = detail_template.substitute(
             title=title,
             meta_desc=meta_desc,
-            inst_name=inst_name,
+            inst_html=inst_html_detail,
             target_area=target_area,
             end_date=end_date,
             subsidy_id=subsidy_id,
+            pain_points_html=pain_points_html,
             ai_article=ai_article,
             ad_code=ad_code,
         )
@@ -157,17 +202,12 @@ try:
             f'<li><a href="{detail_filename}">{title}</a></li>'
         )
 
-        inst_html = (
-            f"<span><strong>制度名:</strong> {inst_name}</span> | "
-            if inst_name
-            else ""
-        )
         cards_html_list.append(f"""
         <article class="card">
             <h3 class="card-title"><a href="{detail_filename}">{title}</a></h3>
             <div class="short-summary">💡 {short_summary}</div>
             <div class="meta">
-                {inst_html}
+                {inst_html_card}
                 <span>対象地域: <span class="tag">{target_area}</span></span>
                 <span>受付終了日: <span class="date-tag">{end_date}</span></span>
             </div>
@@ -182,7 +222,7 @@ try:
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(index_html)
 
-    print("分離構成での生成処理が正常に完了しました。")
+    print("全修正の適用と生成処理が正常に完了しました。")
 
 except Exception as e:
     print(f"エラーが発生しました: {e}")
