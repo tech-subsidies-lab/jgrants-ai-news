@@ -4,14 +4,16 @@ import urllib.request
 import os
 import time
 
+# 環境変数 GEMINI_API_KEY を取得
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 def generate_ai_text(prompt, retries=2):
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
-        return "<p>※詳細解説文が自動生成されます。公募要領を確認して詳細をお確かめください。</p>"
+        print("【警告】GEMINI_API_KEY が設定されていないため、デフォルト文章を出力します。")
+        return "<p>※本補助金の詳細解説・要件については、jGrants公式サイトおよび公募要領をご確認ください。</p>"
     
-    # gemini-1.5-flash-latest を使用
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+    # gemini-1.5-flash の正式エンドポイントに修正
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
     
@@ -26,12 +28,9 @@ def generate_ai_text(prompt, retries=2):
                 wait_time = 15 * (attempt + 1)
                 print(f"429 Rate Limit検知。{wait_time}秒待機して再試行します...")
                 time.sleep(wait_time)
-            elif e.code == 404:
-                print(f"404 Error: モデルエンドポイントが見つかりません。デフォルトメッセージを使用します。")
-                break
             else:
-                print(f"HTTP Error {e.code}")
-                time.sleep(3)
+                print(f"HTTP Error {e.code}: {e.reason}")
+                break
         except Exception as e:
             print(f"Gemini API Error: {e}")
             break
@@ -112,6 +111,7 @@ try:
 
         detail_filename = f"subsidy-{subsidy_id}.html"
 
+        print(f"生成中: {title[:20]}...")
         prompt = f"""
 補助金「{title}」（概要：{target_summary}）についてのWeb解説記事を作成してください。
 以下の3セクション構成で、HTMLタグ（<p>, <h3>, <ul>, <li>）を用いてまとめて出力してください。
