@@ -1,5 +1,6 @@
 import json
 import os
+from string import Template
 import time
 import urllib.parse
 import urllib.request
@@ -7,13 +8,18 @@ import urllib.request
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 BASE_URL = "https://api.jgrants-portal.go.jp/exp/v1/public/subsidies"
 
-# 試行するモデルの優先順位リスト（フォールバック構造）
 MODEL_CANDIDATES = [
     "gemini-2.5-flash",
     "gemini-3.5-flash",
     "gemini-2.5-flash-lite",
     "gemini-flash-latest",
 ]
+
+
+def load_template(filename):
+    path = os.path.join("templates", filename)
+    with open(path, "r", encoding="utf-8") as f:
+        return Template(f.read())
 
 
 def generate_ai_text(prompt, retries=2):
@@ -23,7 +29,6 @@ def generate_ai_text(prompt, retries=2):
     headers = {"Content-Type": "application/json"}
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
-    # モデル候補を順番に試す
     for model_name in MODEL_CANDIDATES:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
 
@@ -37,28 +42,24 @@ def generate_ai_text(prompt, retries=2):
                 )
                 with urllib.request.urlopen(req, timeout=30) as response:
                     res_data = json.loads(response.read().decode("utf-8"))
-                    # 成功したら結果を返して終了
                     return res_data["candidates"][0]["content"]["parts"][0][
                         "text"
                     ]
-
             except urllib.error.HTTPError as e:
                 if e.code == 429:
                     wait_time = 20 * (attempt + 1)
                     print(
-                        f"[{model_name}] 429 Rate Limit。{wait_time}秒待機して再試行... ({attempt + 1}/{retries + 1})"
+                        f"[{model_name}] 429 Rate Limit。{wait_time}秒待機して再試行..."
                     )
                     time.sleep(wait_time)
                 elif e.code == 404:
                     print(
                         f"[{model_name}] 404 エラー。次のモデルに切り替えます..."
                     )
-                    break  # 404の場合は次のモデルへ即座に切替
+                    break
                 else:
-                    print(f"[{model_name}] HTTP Error {e.code}")
                     time.sleep(3)
-            except Exception as e:
-                print(f"[{model_name}] エラー: {e}")
+            except Exception:
                 time.sleep(3)
 
     return "<p>AI解説の生成中にエラーが発生しました。</p>"
@@ -72,6 +73,9 @@ params = {
 }
 
 try:
+    index_template = load_template("index_template.html")
+    detail_template = load_template("detail_template.html")
+
     url = f"{BASE_URL}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
 
@@ -82,37 +86,15 @@ try:
     subsidies = data.get("result", [])[:10]
 
     ad_code = """
-    <div class="ad-banner" style="text-align: center; margin: 30px 0;">
+    <div class="ad-banner" style="text-align: center; margin: 25px 0;">
         <a href="https://px.a8.net/svt/ejp?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" rel="nofollow">
         <img border="0" width="336" height="280" alt="おすすめサービス" src="https://www29.a8.net/svt/bgt?aid=260826388510&wid=001&eno=01&mid=s00000021185002032000&mc=1"></a>
         <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" alt="">
     </div>
     """
 
-    html_content = f"""<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>公募中のIT補助金・助成金一覧まとめ【最新情報】</title>
-    <meta name="description" content="現在公募中のIT関連補助金・助成金の最新情報を一挙掲載。対象地域や受付締切日、AIによるわかりやすい活用ポイントを解説しています。">
-    <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.8; margin: 0; padding: 20px; background-color: #f4f6f9; color: #333; }}
-        .container {{ max-width: 850px; margin: 0 auto; }}
-        h1 {{ font-size: 1.8em; margin-bottom: 20px; color: #1a252f; border-bottom: 3px solid #0056b3; padding-bottom: 10px; }}
-        .card {{ background: #fff; border: 1px solid #e1e4e8; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }}
-        .title {{ font-size: 1.2em; font-weight: bold; margin-bottom: 10px; }}
-        .title a {{ color: #0056b3; text-decoration: none; }}
-        .title a:hover {{ text-decoration: underline; }}
-        .meta {{ font-size: 0.88em; color: #586069; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }}
-        .tag {{ background: #e1f5fe; color: #0288d1; padding: 2px 8px; border-radius: 4px; font-weight: 500; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>現在募集中の補助金・助成金一覧</h1>
-        {ad_code}
-"""
+    toc_items_list = []
+    cards_html_list = []
 
     for item in subsidies:
         subsidy_id = item.get("id", "")
@@ -129,6 +111,18 @@ try:
 
         detail_filename = f"subsidy-{subsidy_id}.html"
 
+        clean_summary = (
+            target_summary.replace("<", "")
+            .replace(">", "")
+            .replace("\n", "")
+            .strip()
+        )
+        short_summary = (
+            clean_summary[:70] + "..."
+            if len(clean_summary) > 70
+            else clean_summary
+        )
+
         print(f"生成中: {title[:20]}...")
         prompt = f"""
 補助金「{title}」（概要：{target_summary}）についてのWeb解説記事を作成してください。
@@ -143,91 +137,52 @@ try:
         ai_article = generate_ai_text(prompt)
         time.sleep(4)
 
-        clean_summary = target_summary.replace("<", "").replace(">", "")[:110]
-        meta_desc = f"{title}の概要・活用メリット・申請手順を徹底解説。{clean_summary}..."
+        meta_desc = f"{title}の概要・活用メリット・申請手順を徹底解説。{clean_summary[:100]}..."
 
-        detail_html = f"""<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}の解説と活用ガイド - 補助金情報ナビ</title>
-    <meta name="description" content="{meta_desc}">
-    <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.8; margin: 0; padding: 20px; background-color: #f4f6f9; color: #333; }}
-        .container {{ max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }}
-        h1 {{ font-size: 1.6em; color: #1a252f; border-bottom: 3px solid #0056b3; padding-bottom: 10px; margin-top: 10px; }}
-        h2 {{ font-size: 1.3em; color: #0056b3; border-left: 4px solid #0056b3; padding-left: 10px; margin-top: 30px; }}
-        .back-link {{ display: inline-block; margin-bottom: 15px; color: #0056b3; text-decoration: none; font-weight: bold; }}
-        .meta-box {{ background: #e1f5fe; padding: 15px; border-radius: 6px; margin: 20px 0; border: 1px solid #b3e5fc; }}
-        .toc {{ background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 15px 20px; margin: 25px 0; }}
-        .toc-title {{ font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; }}
-        .toc ul {{ margin: 0; padding-left: 20px; }}
-        .toc li {{ margin-bottom: 5px; }}
-        .toc a {{ color: #0056b3; text-decoration: none; }}
-        .btn {{ display: inline-block; background: #0056b3; color: #fff; padding: 12px 24px; border-radius: 5px; text-decoration: none; font-weight: bold; margin-top: 15px; text-align: center; }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="index.html" class="back-link">← 補助金一覧に戻る</a>
-        <h1>{title}</h1>
-        <nav class="toc">
-            <div class="toc-title">目次</div>
-            <ul>
-                <li><a href="#overview">1. 補助金の基本概要</a></li>
-                <li><a href="#ai-guide">2. AIによるポイント解説・活用法</a></li>
-            </ul>
-        </nav>
-        {ad_code}
-        <section id="overview">
-            <h2>1. 補助金の基本概要</h2>
-            <div class="meta-box">
-                <p><strong>制度名:</strong> {inst_name}</p>
-                <p><strong>対象地域:</strong> {target_area}</p>
-                <p><strong>受付終了日:</strong> {end_date}</p>
-            </div>
-        </section>
-        {ad_code}
-        <section id="ai-guide">
-            <h2>2. AIによるポイント解説・活用法</h2>
-            {ai_article}
-            <p style="text-align: center; margin-top: 25px;">
-                <a href="https://www.jgrants-portal.go.jp/subsidy/{subsidy_id}" target="_blank" rel="noopener" class="btn">jGrants 公式サイトで申請要領を確認する</a>
-            </p>
-        </section>
-        {ad_code}
-    </div>
-</body>
-</html>"""
+        detail_html = detail_template.substitute(
+            title=title,
+            meta_desc=meta_desc,
+            inst_name=inst_name,
+            target_area=target_area,
+            end_date=end_date,
+            subsidy_id=subsidy_id,
+            ai_article=ai_article,
+            ad_code=ad_code,
+        )
 
         with open(detail_filename, "w", encoding="utf-8") as f:
             f.write(detail_html)
+
+        toc_items_list.append(
+            f'<li><a href="{detail_filename}">{title}</a></li>'
+        )
 
         inst_html = (
             f"<span><strong>制度名:</strong> {inst_name}</span> | "
             if inst_name
             else ""
         )
-        html_content += f"""
-        <div class="card">
-            <div class="title"><a href="{detail_filename}">{title}</a></div>
+        cards_html_list.append(f"""
+        <article class="card">
+            <h3 class="card-title"><a href="{detail_filename}">{title}</a></h3>
+            <div class="short-summary">💡 {short_summary}</div>
             <div class="meta">
                 {inst_html}
-                <span><strong>対象地域:</strong> <span class="tag">{target_area}</span></span>
-                <span><strong>受付終了日:</strong> {end_date}</span>
+                <span>対象地域: <span class="tag">{target_area}</span></span>
+                <span>受付終了日: <span class="date-tag">{end_date}</span></span>
             </div>
-        </div>"""
+        </article>""")
 
-    html_content += """
-    </div>
-</body>
-</html>"""
+    index_html = index_template.substitute(
+        ad_code=ad_code,
+        toc_items="\n".join(toc_items_list),
+        cards_html="\n".join(cards_html_list),
+    )
 
     with open("index.html", "w", encoding="utf-8") as f:
-        f.write(html_content)
+        f.write(index_html)
 
-    print("処理が正常に完了しました。")
+    print("分離構成での生成処理が正常に完了しました。")
 
 except Exception as e:
     print(f"エラーが発生しました: {e}")
