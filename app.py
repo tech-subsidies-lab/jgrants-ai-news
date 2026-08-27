@@ -4,22 +4,34 @@ import urllib.request
 import os
 import time
 
-# 環境変数 GEMINI_API_KEY を取得
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 def generate_ai_text(prompt, retries=2):
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
-        print("【警告】GEMINI_API_KEY が設定されていないため、デフォルト文章を出力します。")
+        print("【警告】GEMINI_API_KEY が設定されていません。")
         return "<p>※本補助金の詳細解説・要件については、jGrants公式サイトおよび公募要領をご確認ください。</p>"
     
-    # gemini-1.5-flash の正式エンドポイントに修正
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # エンドポイントを v1 / gemini-1.5-flash に変更
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
-    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ]
+    }
     
     for attempt in range(retries + 1):
         try:
-            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+            req = urllib.request.Request(
+                url, 
+                data=json.dumps(payload).encode("utf-8"), 
+                headers=headers, 
+                method="POST"
+            )
             with urllib.request.urlopen(req, timeout=30) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 return res_data["candidates"][0]["content"]["parts"][0]["text"]
@@ -28,6 +40,23 @@ def generate_ai_text(prompt, retries=2):
                 wait_time = 15 * (attempt + 1)
                 print(f"429 Rate Limit検知。{wait_time}秒待機して再試行します...")
                 time.sleep(wait_time)
+            elif e.code == 404:
+                # v1beta へのフォールバック試行
+                print(f"v1で404が発生したため、v1betaで試行します...")
+                fallback_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+                try:
+                    req_fb = urllib.request.Request(
+                        fallback_url, 
+                        data=json.dumps(payload).encode("utf-8"), 
+                        headers=headers, 
+                        method="POST"
+                    )
+                    with urllib.request.urlopen(req_fb, timeout=30) as response_fb:
+                        res_data_fb = json.loads(response_fb.read().decode("utf-8"))
+                        return res_data_fb["candidates"][0]["content"]["parts"][0]["text"]
+                except Exception as fb_err:
+                    print(f"フォールバック失敗: {fb_err}")
+                    break
             else:
                 print(f"HTTP Error {e.code}: {e.reason}")
                 break
