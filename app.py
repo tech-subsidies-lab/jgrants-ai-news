@@ -7,45 +7,60 @@ import urllib.request
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 BASE_URL = "https://api.jgrants-portal.go.jp/exp/v1/public/subsidies"
 
+# 試行するモデルの優先順位リスト（フォールバック構造）
+MODEL_CANDIDATES = [
+    "gemini-2.5-flash",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-flash-latest",
+]
 
-def generate_ai_text(prompt, retries=3):
+
+def generate_ai_text(prompt, retries=2):
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
         return "<p>※Gemini APIキーを設定すると、ここにAIによる詳細解説文が自動生成されます。</p>"
 
-    # 以前成功していた gemini-2.5-flash エンドポイントを指定
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
-    for attempt in range(retries + 1):
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers=headers,
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=30) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                return res_data["candidates"][0]["content"]["parts"][0][
-                    "text"
-                ]
-        except urllib.error.HTTPError as e:
-            if e.code == 429:
-                wait_time = 30 * (attempt + 1)
-                print(
-                    f"429 Rate Limit検知。{wait_time}秒待機して再試行します... (試行 {attempt + 1}/{retries + 1})"
+    # モデル候補を順番に試す
+    for model_name in MODEL_CANDIDATES:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+
+        for attempt in range(retries + 1):
+            try:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers=headers,
+                    method="POST",
                 )
-                time.sleep(wait_time)
-            else:
-                print(f"HTTP Error: {e.code}")
-                time.sleep(5)
-        except Exception as e:
-            if attempt < retries:
-                time.sleep(5)
-                continue
-            print(f"Gemini API Error: {e}")
-            return "<p>AI解説の生成中にエラーが発生しました。</p>"
+                with urllib.request.urlopen(req, timeout=30) as response:
+                    res_data = json.loads(response.read().decode("utf-8"))
+                    # 成功したら結果を返して終了
+                    return res_data["candidates"][0]["content"]["parts"][0][
+                        "text"
+                    ]
+
+            except urllib.error.HTTPError as e:
+                if e.code == 429:
+                    wait_time = 20 * (attempt + 1)
+                    print(
+                        f"[{model_name}] 429 Rate Limit。{wait_time}秒待機して再試行... ({attempt + 1}/{retries + 1})"
+                    )
+                    time.sleep(wait_time)
+                elif e.code == 404:
+                    print(
+                        f"[{model_name}] 404 エラー。次のモデルに切り替えます..."
+                    )
+                    break  # 404の場合は次のモデルへ即座に切替
+                else:
+                    print(f"[{model_name}] HTTP Error {e.code}")
+                    time.sleep(3)
+            except Exception as e:
+                print(f"[{model_name}] エラー: {e}")
+                time.sleep(3)
+
     return "<p>AI解説の生成中にエラーが発生しました。</p>"
 
 
@@ -126,7 +141,7 @@ try:
 出力は上記の解説部分のHTMLコードのみにしてください。
 """
         ai_article = generate_ai_text(prompt)
-        time.sleep(6)
+        time.sleep(4)
 
         clean_summary = target_summary.replace("<", "").replace(">", "")[:110]
         meta_desc = f"{title}の概要・活用メリット・申請手順を徹底解説。{clean_summary}..."
