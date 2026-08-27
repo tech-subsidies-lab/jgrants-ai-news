@@ -21,32 +21,34 @@
             --border-color: #e2e8f0;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.8; margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); }
-        .container { max-width: 900px; margin: 0 auto; padding: 30px 20px; }
+        /* PC画面で広々と見やすくするため max-width を 1080px に拡張 */
+        .container { max-width: 1080px; margin: 0 auto; padding: 40px 20px; }
         
-        .site-header { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: #fff; padding: 35px 25px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .site-header h1 { margin: 0 0 10px 0; font-size: 1.85em; letter-spacing: 0.5px; }
-        .site-header p { margin: 0; font-size: 0.98em; opacity: 0.95; line-height: 1.6; }
+        .site-header { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: #fff; padding: 40px 35px; border-radius: 12px; margin-bottom: 35px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+        .site-header h1 { margin: 0 0 12px 0; font-size: 2em; letter-spacing: 0.5px; }
+        .site-header p { margin: 0; font-size: 1.02em; opacity: 0.95; line-height: 1.7; }
         
-        .toc-box { background: var(--card-bg); border: 1px solid var(--border-color); border-left: 5px solid var(--secondary); border-radius: 8px; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .toc-title { font-weight: bold; font-size: 1.1em; margin-bottom: 12px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
-        .toc-list { margin: 0; padding-left: 20px; }
-        .toc-list li { margin-bottom: 6px; }
-        .toc-list a { color: var(--secondary); text-decoration: none; font-size: 0.95em; }
-        .toc-list a:hover { text-decoration: underline; }
+        .toc-box { background: var(--card-bg); border: 1px solid var(--border-color); border-left: 6px solid var(--secondary); border-radius: 10px; padding: 25px 30px; margin-bottom: 35px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .toc-title { font-weight: bold; font-size: 1.15em; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .toc-list { margin: 0; padding-left: 22px; display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 10px 30px; }
+        .toc-list li { margin-bottom: 4px; }
+        .toc-list a { color: var(--secondary); text-decoration: none; font-size: 0.98em; font-weight: 500; }
+        .toc-list a:hover { text-decoration: underline; color: var(--primary); }
 
-        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 22px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: transform 0.2s, box-shadow 0.2s; }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
-        .card-title { font-size: 1.25em; font-weight: bold; margin-bottom: 10px; line-height: 1.4; }
+        .card-grid { display: grid; gap: 20px; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 28px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+        .card-title { font-size: 1.3em; font-weight: bold; margin: 0 0 12px 0; line-height: 1.4; }
         .card-title a { color: var(--primary); text-decoration: none; }
         .card-title a:hover { color: var(--secondary); }
         
-        .short-summary { font-size: 0.92em; color: #4a5568; background-color: #edf2f7; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid var(--secondary); }
+        .short-summary { font-size: 0.95em; color: #4a5568; background-color: #f8fafc; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; border-left: 4px solid var(--secondary); line-height: 1.6; }
         
-        .meta { font-size: 0.88em; color: var(--text-sub); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-        .tag { background: #ebf8ff; color: #2b6cb0; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em; }
-        .date-tag { background: #fff5f5; color: #c53030; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em; }
+        .meta { font-size: 0.9em; color: var(--text-sub); display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .tag { background: #ebf8ff; color: #2b6cb0; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.88em; }
+        .date-tag { background: #fff5f5; color: #c53030; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.88em; }
         
-        footer { text-align: center; font-size: 0.85em; color: var(--text-sub); margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--border-color); }
+        footer { text-align: center; font-size: 0.9em; color: var(--text-sub); margin-top: 60px; padding: 30px 0; border-top: 1px solid var(--border-color); }
     </style>
 </head>
 <body>
@@ -66,8 +68,10 @@
         </section>
 
         <main>
-            <h2 style="font-size: 1.4em; color: var(--primary); margin-bottom: 20px; border-bottom: 2px solid var(--secondary); padding-bottom: 8px;">現在公募中の補助金一覧</h2>
-            ${cards_html}
+            <h2 style="font-size: 1.5em; color: var(--primary); margin-bottom: 25px; border-bottom: 3px solid var(--secondary); padding-bottom: 10px;">現在公募中の補助金一覧</h2>
+            <div class="card-grid">
+                ${cards_html}
+            </div>
         </main>
 
         <footer>
