@@ -1,1 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公募中のIT補助金・助成金一覧まとめ【最新・毎日更新】</title>
+    <meta name="description" content="現在公募中のIT関連補助金・助成金の最新情報を一挙掲載。対象地域や受付締切日、AIによるわかりやすい活用ポイントを解説しています。">
+    <meta property="og:title" content="公募中のIT補助金・助成金一覧まとめ【最新情報】">
+    <meta property="og:description" content="中小企業・小規模事業者向けの最新IT補助金・助成金情報をAIがわかりやすく解説。">
+    <meta property="og:type" content="website">
+    
+    <style>
+        :root {
+            --primary: #1a365d;
+            --secondary: #2b6cb0;
+            --accent: #dd6b20;
+            --bg-color: #f7fafc;
+            --card-bg: #ffffff;
+            --text-main: #2d3748;
+            --text-sub: #718096;
+            --border-color: #e2e8f0;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.8; margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); }
+        .container { max-width: 900px; margin: 0 auto; padding: 30px 20px; }
+        
+        .site-header { background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: #fff; padding: 35px 25px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .site-header h1 { margin: 0 0 10px 0; font-size: 1.85em; letter-spacing: 0.5px; }
+        .site-header p { margin: 0; font-size: 0.98em; opacity: 0.95; line-height: 1.6; }
+        
+        .toc-box { background: var(--card-bg); border: 1px solid var(--border-color); border-left: 5px solid var(--secondary); border-radius: 8px; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .toc-title { font-weight: bold; font-size: 1.1em; margin-bottom: 12px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .toc-list { margin: 0; padding-left: 20px; }
+        .toc-list li { margin-bottom: 6px; }
+        .toc-list a { color: var(--secondary); text-decoration: none; font-size: 0.95em; }
+        .toc-list a:hover { text-decoration: underline; }
 
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 22px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+        .card-title { font-size: 1.25em; font-weight: bold; margin-bottom: 10px; line-height: 1.4; }
+        .card-title a { color: var(--primary); text-decoration: none; }
+        .card-title a:hover { color: var(--secondary); }
+        
+        .short-summary { font-size: 0.92em; color: #4a5568; background-color: #edf2f7; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; border-left: 3px solid var(--secondary); }
+        
+        .meta { font-size: 0.88em; color: var(--text-sub); display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .tag { background: #ebf8ff; color: #2b6cb0; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em; }
+        .date-tag { background: #fff5f5; color: #c53030; padding: 3px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85em; }
+        
+        footer { text-align: center; font-size: 0.85em; color: var(--text-sub); margin-top: 50px; padding: 20px 0; border-top: 1px solid var(--border-color); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="site-header">
+            <h1>IT補助金・助成金ナビ</h1>
+            <p>当サイトは、全国の自治体や省庁が公募している最新のIT導入・デジタル化・DX支援に関する補助金・助成金情報をリアルタイムで集約・解説する専門情報ポータルです。複雑な募集要項をAIが分析し、活用のポイントを簡潔にお伝えします。</p>
+        </header>
+
+        ${ad_code}
+
+        <section class="toc-box">
+            <div class="toc-title">📌 本日の新着・注目補助金一覧（目次）</div>
+            <ol class="toc-list">
+                ${toc_items}
+            </ol>
+        </section>
+
+        <main>
+            <h2 style="font-size: 1.4em; color: var(--primary); margin-bottom: 20px; border-bottom: 2px solid var(--secondary); padding-bottom: 8px;">現在公募中の補助金一覧</h2>
+            ${cards_html}
+        </main>
+
+        <footer>
+            <p>&copy; IT補助金・助成金ナビ All Rights Reserved.</p>
+        </footer>
+    </div>
+</body>
+</html>
