@@ -4,14 +4,15 @@ import urllib.request
 import os
 import time
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
-BASE_URL = "https://api.jgrants-portal.go.jp/exp/v1/public/subsidies"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 def generate_ai_text(prompt, retries=3):
+    # APIキーがセットされていない場合は安全にデフォルトメッセージを返す
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
         return "<p>※詳細解説文が自動生成されます。</p>"
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    # 安定版 v1 エンドポイントを使用
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
     
@@ -36,6 +37,8 @@ def generate_ai_text(prompt, retries=3):
             print(f"Gemini API Error: {e}")
             return "<p>解説の生成中にエラーが発生しました。</p>"
     return "<p>解説の生成中にエラーが発生しました。</p>"
+
+BASE_URL = "https://api.jgrants-portal.go.jp/exp/v1/public/subsidies"
 
 params = {
     "keyword": "IT",
