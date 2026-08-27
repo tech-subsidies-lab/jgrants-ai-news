@@ -1,0 +1,39 @@
+name: Daily Subsidy News Update
+
+on:
+  schedule:
+    # 毎日日本時間 午前9:00 (UTC 0:00) に自動実行
+    - cron: '0 0 * * *'
+  # 手動実行ボタンも残しておく
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Run app.py
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python app.py
+
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          # 差分（更新）がある場合のみコミット
+          if git status --porcelain | grep -E 'index\.html|subsidy-'; then
+            git commit -m "Auto-update subsidy news [skip ci]"
+            git push
+          else
+            echo "変更（新しい補助金情報）がなかったため、コミットをスキップします。"
+          fi
