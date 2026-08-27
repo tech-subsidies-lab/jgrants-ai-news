@@ -1,32 +1,41 @@
-cd "/Users/iitatepower_primary/Desktop/apps" && \
-python3 -c '
-code = """import json
-import urllib.parse
-import urllib.request
+import json
 import os
 import time
+import urllib.parse
+import urllib.request
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 BASE_URL = "https://api.jgrants-portal.go.jp/exp/v1/public/subsidies"
 
+
 def generate_ai_text(prompt, retries=3):
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
         return "<p>※Gemini APIキーを設定すると、ここにAIによる詳細解説文が自動生成されます。</p>"
-    
+
+    # 以前成功していた gemini-2.5-flash エンドポイントを指定
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
     headers = {"Content-Type": "application/json"}
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
-    
+
     for attempt in range(retries + 1):
         try:
-            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers=headers,
+                method="POST",
+            )
             with urllib.request.urlopen(req, timeout=30) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
-                return res_data["candidates"][0]["content"]["parts"][0]["text"]
+                return res_data["candidates"][0]["content"]["parts"][0][
+                    "text"
+                ]
         except urllib.error.HTTPError as e:
             if e.code == 429:
                 wait_time = 30 * (attempt + 1)
-                print(f"429 Rate Limit検知。{wait_time}秒待機して再試行します... (試行 {attempt + 1}/{retries + 1})")
+                print(
+                    f"429 Rate Limit検知。{wait_time}秒待機して再試行します... (試行 {attempt + 1}/{retries + 1})"
+                )
                 time.sleep(wait_time)
             else:
                 print(f"HTTP Error: {e.code}")
@@ -38,6 +47,7 @@ def generate_ai_text(prompt, retries=3):
             print(f"Gemini API Error: {e}")
             return "<p>AI解説の生成中にエラーが発生しました。</p>"
     return "<p>AI解説の生成中にエラーが発生しました。</p>"
+
 
 params = {
     "keyword": "IT",
@@ -54,18 +64,17 @@ try:
         res_body = response.read().decode("utf-8")
         data = json.loads(res_body)
 
-    # API負荷を考慮し、処理件数を最新10件までに制限
     subsidies = data.get("result", [])[:10]
 
-    ad_code = \"\"\"
+    ad_code = """
     <div class="ad-banner" style="text-align: center; margin: 30px 0;">
         <a href="https://px.a8.net/svt/ejp?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" rel="nofollow">
         <img border="0" width="336" height="280" alt="おすすめサービス" src="https://www29.a8.net/svt/bgt?aid=260826388510&wid=001&eno=01&mid=s00000021185002032000&mc=1"></a>
         <img border="0" width="1" height="1" src="https://www15.a8.net/0.gif?a8mat=4BAEXG+8FN3AQ+4JGQ+C3J0H" alt="">
     </div>
-    \"\"\"
+    """
 
-    html_content = f\"\"\"<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -88,7 +97,7 @@ try:
     <div class="container">
         <h1>現在募集中の補助金・助成金一覧</h1>
         {ad_code}
-\"\"\"
+"""
 
     for item in subsidies:
         subsidy_id = item.get("id", "")
@@ -96,14 +105,17 @@ try:
         inst_name = item.get("institution_name", "公的機関")
         target_area = item.get("target_area_search", "全国")
         end_date = item.get("acceptance_end_datetime", "不明")
-        target_summary = item.get("target_summary", "詳細情報は公募要領をご確認ください。")
+        target_summary = item.get(
+            "target_summary", "詳細情報は公募要領をご確認ください。"
+        )
 
         if end_date != "不明" and "T" in end_date:
             end_date = end_date.split("T")[0]
 
         detail_filename = f"subsidy-{subsidy_id}.html"
 
-        prompt = f\"\"\"
+        print(f"生成中: {title[:20]}...")
+        prompt = f"""
 補助金「{title}」（概要：{target_summary}）についてのWeb解説記事を作成してください。
 以下の3セクション構成で、HTMLタグ（<p>, <h3>, <ul>, <li>）を用いてまとめて出力してください。
 
@@ -112,14 +124,14 @@ try:
 3. 【まとめ】: 申請に向けた注意点やアドバイス（<p>2〜3文）
 
 出力は上記の解説部分のHTMLコードのみにしてください。
-\"\"\"
+"""
         ai_article = generate_ai_text(prompt)
-        time.sleep(6) # 安全のため6秒待機（1分間10回以下に制御）
+        time.sleep(6)
 
         clean_summary = target_summary.replace("<", "").replace(">", "")[:110]
         meta_desc = f"{title}の概要・活用メリット・申請手順を徹底解説。{clean_summary}..."
 
-        detail_html = f\"\"\"<!DOCTYPE html>
+        detail_html = f"""<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -172,13 +184,17 @@ try:
         {ad_code}
     </div>
 </body>
-</html>\"\"\"
+</html>"""
 
         with open(detail_filename, "w", encoding="utf-8") as f:
             f.write(detail_html)
 
-        inst_html = f"<span><strong>制度名:</strong> {inst_name}</span> | " if inst_name else ""
-        html_content += f\"\"\"
+        inst_html = (
+            f"<span><strong>制度名:</strong> {inst_name}</span> | "
+            if inst_name
+            else ""
+        )
+        html_content += f"""
         <div class="card">
             <div class="title"><a href="{detail_filename}">{title}</a></div>
             <div class="meta">
@@ -186,23 +202,17 @@ try:
                 <span><strong>対象地域:</strong> <span class="tag">{target_area}</span></span>
                 <span><strong>受付終了日:</strong> {end_date}</span>
             </div>
-        </div>\"\"\"
+        </div>"""
 
-    html_content += \"\"\"
+    html_content += """
     </div>
 </body>
-</html>\"\"\"
+</html>"""
 
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    print("安全設定適用版の実行が完了しました。")
+    print("処理が正常に完了しました。")
 
 except Exception as e:
     print(f"エラーが発生しました: {e}")
-"""
-open("app.py", "w").write(code)
-' && \
-git add app.py && \
-git commit -m "Optimize Gemini API rate limit handling (6s delay + 10 items limit)" && \
-git push origin main
