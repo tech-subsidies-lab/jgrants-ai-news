@@ -23,6 +23,45 @@ def load_template(filename):
         return Template(f.read())
 
 
+def format_subsidy_data(subsidy_max_raw, subsidy_rate_raw):
+    """補助上限額と補助率を判定し、フォーマット済みテキストとカード用バッジを生成"""
+    # 1. 補助上限額の判定
+    amount_text = "公募要領をご確認ください"
+    amount_badge = ""
+
+    if subsidy_max_raw and str(subsidy_max_raw).lower() != "none":
+        digits_only = re.sub(r"[^\d]", "", str(subsidy_max_raw))
+        if digits_only:
+            val = int(digits_only)
+            if val >= 100000000:
+                oku = val / 100000000
+                formatted = (
+                    f"{int(oku)}億円" if oku.is_integer() else f"{oku:.1f}億円"
+                )
+            elif val >= 10000:
+                man = val / 10000
+                formatted = (
+                    f"{int(man)}万円" if man.is_integer() else f"{man:.1f}万円"
+                )
+            else:
+                formatted = f"{val:,}円"
+
+            amount_text = f"最大 {formatted}"
+            amount_badge = f'<span class="price-tag">💰 上限: {formatted}</span>'
+
+    # 2. 補助率の判定
+    rate_text = "公募要領をご確認ください"
+    rate_badge = ""
+
+    if subsidy_rate_raw and str(subsidy_rate_raw).lower() != "none":
+        raw_str = str(subsidy_rate_raw).strip()
+        if "参照" not in raw_str and "確認" not in raw_str:
+            rate_text = raw_str
+            rate_badge = f'<span class="rate-tag">📊 補助率: {raw_str}</span>'
+
+    return amount_text, amount_badge, rate_text, rate_badge
+
+
 def generate_ai_text(prompt, retries=2):
     if not GEMINI_API_KEY or GEMINI_API_KEY == "YOUR_GEMINI_API_KEY_HERE":
         return "<p>※Gemini APIキーを設定すると、ここにAIによる詳細解説文が自動生成されます。</p>"
@@ -105,6 +144,14 @@ try:
         end_date = item.get("acceptance_end_datetime", "不明")
         target_summary = item.get("target_summary", "")
 
+        # 補助上限額と補助率を取得
+        subsidy_max_raw = item.get("subsidy_max", "")
+        subsidy_rate_raw = item.get("subsidy_rate", "")
+
+        amount_text, amount_badge, rate_text, rate_badge = format_subsidy_data(
+            subsidy_max_raw, subsidy_rate_raw
+        )
+
         if end_date != "不明" and "T" in end_date:
             end_date = end_date.split("T")[0]
 
@@ -112,7 +159,6 @@ try:
 
         print(f"生成中: {title[:20]}...")
 
-        # Prompt with dynamic pain points generation
         prompt = f"""
 補助金「{title}」（概要：{target_summary}）についてのWeb解説記事を作成してください。
 以下の構成で、指定のマークアップタグを用いて出力してください。
@@ -138,7 +184,6 @@ try:
         raw_response = generate_ai_text(prompt)
         time.sleep(4)
 
-        # お悩みリスト（PAIN_POINTS）の抽出
         pain_points_html = "<li>IT導入や事業課題の解決を目指している</li><li>申請に活用できる補助金情報を探している</li><li>費用の負担を軽減してDX化を進めたい</li>"
         ai_article = raw_response
 
@@ -157,7 +202,6 @@ try:
                     [f"<li>{item}</li>" for item in items[:3]]
                 )
 
-        # トップ画面用：AI解説の「はじめに」からプレーンテキストを抽出して要約に使う
         plain_text = re.sub(r"<[^>]+>", "", ai_article).strip()
         plain_text = re.sub(r"\s+", " ", plain_text)
         short_summary = (
@@ -170,9 +214,8 @@ try:
             .replace("\n", "")
             .strip()
         )
-        meta_desc = f"{title}の概要・活用メリット・申請手順を徹底解説。{clean_summary[:100]}..."
+        meta_desc = f"{title}（{amount_text}）の概要・活用メリット・申請手順を解説。{clean_summary[:90]}..."
 
-        # 実施機関名の表示分岐（Noneや空の場合は非表示）
         inst_html_detail = ""
         inst_html_card = ""
         if inst_name and inst_name.lower() != "none":
@@ -189,6 +232,8 @@ try:
             inst_html=inst_html_detail,
             target_area=target_area,
             end_date=end_date,
+            amount_text=amount_text,
+            rate_text=rate_text,
             subsidy_id=subsidy_id,
             pain_points_html=pain_points_html,
             ai_article=ai_article,
@@ -202,12 +247,20 @@ try:
             f'<li><a href="{detail_filename}">{title}</a></li>'
         )
 
+        # バッジの組み込み
+        badges_html = (
+            f"{amount_badge} {rate_badge}".strip() + " | "
+            if (amount_badge or rate_badge)
+            else ""
+        )
+
         cards_html_list.append(f"""
         <article class="card">
             <h3 class="card-title"><a href="{detail_filename}">{title}</a></h3>
             <div class="short-summary">💡 {short_summary}</div>
             <div class="meta">
                 {inst_html_card}
+                {badges_html}
                 <span>対象地域: <span class="tag">{target_area}</span></span>
                 <span>受付終了日: <span class="date-tag">{end_date}</span></span>
             </div>
@@ -222,7 +275,7 @@ try:
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(index_html)
 
-    print("全修正の適用と生成処理が正常に完了しました。")
+    print("金額・補助率の自動判定ロジックを含む更新処理が正常に完了しました。")
 
 except Exception as e:
     print(f"エラーが発生しました: {e}")
