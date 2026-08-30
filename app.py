@@ -217,13 +217,9 @@ try:
         meta_desc = f"{title}（{amount_text}）の概要・活用メリット・申請手順を解説。{clean_summary[:90]}..."
 
         inst_html_detail = ""
-        inst_html_card = ""
         if inst_name and inst_name.lower() != "none":
             inst_html_detail = (
                 f"<p><strong>実施機関・制度名:</strong> {inst_name}</p>"
-            )
-            inst_html_card = (
-                f"<span><strong>制度名:</strong> {inst_name}</span> | "
             )
 
         detail_html = detail_template.substitute(
@@ -247,22 +243,37 @@ try:
             f'<li><a href="{detail_filename}">{title}</a></li>'
         )
 
-        # バッジの組み込み
-        badges_html = (
-            f"{amount_badge} {rate_badge}".strip() + " | "
-            if (amount_badge or rate_badge)
-            else ""
-        )
+        # ---------------------------------------------------------
+        # カード下部メタ情報・バッジ群の組み立て（マージ・最適化部分）
+        # ---------------------------------------------------------
+        meta_items = []
+
+        # 1. 制度名
+        if inst_name and inst_name.lower() != "none":
+            meta_items.append(f"<span><strong>制度名:</strong> {inst_name}</span>")
+
+        # 2. 対象地域
+        meta_items.append(f'<span>対象地域: <span class="tag">{target_area}</span></span>')
+
+        # 3. 受付終了日
+        meta_items.append(f'<span>受付終了日: <span class="date-tag">{end_date}</span></span>')
+
+        # 4. 金額上限バッジ（データが存在する場合のみ）
+        if amount_badge:
+            meta_items.append(amount_badge)
+
+        # 5. 補助率バッジ（データが存在する場合のみ）
+        if rate_badge:
+            meta_items.append(rate_badge)
+
+        meta_html = "\n                ".join(meta_items)
 
         cards_html_list.append(f"""
         <article class="card">
             <h3 class="card-title"><a href="{detail_filename}">{title}</a></h3>
             <div class="short-summary">💡 {short_summary}</div>
             <div class="meta">
-                {inst_html_card}
-                {badges_html}
-                <span>対象地域: <span class="tag">{target_area}</span></span>
-                <span>受付終了日: <span class="date-tag">{end_date}</span></span>
+                {meta_html}
             </div>
         </article>""")
 
