@@ -25,12 +25,21 @@ def load_template(filename):
 
 def format_subsidy_data(subsidy_max_raw, subsidy_rate_raw):
     """補助上限額と補助率を判定し、フォーマット済みテキストとカード用バッジを生成"""
+
+    # HTMLタグ（<tr ...> や <th> など）を除去してテキストのみ取り出す補助関数
+    def clean_html_text(text):
+        if not text:
+            return ""
+        cleaned = re.sub(r"<[^>]+>", "", str(text))
+        return cleaned.strip()
+
     # 1. 補助上限額の判定
     amount_text = "公募要領をご確認ください"
     amount_badge = ""
 
-    if subsidy_max_raw and str(subsidy_max_raw).lower() != "none":
-        digits_only = re.sub(r"[^\d]", "", str(subsidy_max_raw))
+    clean_max = clean_html_text(subsidy_max_raw)
+    if clean_max and clean_max.lower() != "none":
+        digits_only = re.sub(r"[^\d]", "", clean_max)
         if digits_only:
             val = int(digits_only)
             if val >= 100000000:
@@ -53,11 +62,21 @@ def format_subsidy_data(subsidy_max_raw, subsidy_rate_raw):
     rate_text = "公募要領をご確認ください"
     rate_badge = ""
 
-    if subsidy_rate_raw and str(subsidy_rate_raw).lower() != "none":
-        raw_str = str(subsidy_rate_raw).strip()
-        if "参照" not in raw_str and "確認" not in raw_str:
-            rate_text = raw_str
-            rate_badge = f'<span class="rate-tag">📊 補助率: {raw_str}</span>'
+    clean_rate = clean_html_text(subsidy_rate_raw)
+    if clean_rate and clean_rate.lower() != "none":
+        # 「補助率」という文言があれば削除して整形
+        clean_rate_val = clean_rate.replace("補助率", "").strip()
+
+        # 「参照」「確認」などが含まれる場合はバッジ非表示
+        if (
+            clean_rate_val
+            and "参照" not in clean_rate_val
+            and "確認" not in clean_rate_val
+        ):
+            rate_text = clean_rate_val
+            rate_badge = (
+                f'<span class="rate-tag">📊 補助率: {clean_rate_val}</span>'
+            )
 
     return amount_text, amount_badge, rate_text, rate_badge
 
@@ -173,7 +192,7 @@ try:
 </PAIN_POINTS>
 
 【2. 解説本文】
-以下の3セクション構成で、HTMLタグ（<p>, <h3>, <ul>, <li>）を用いてまとめて出力してください。
+以下の3セクション構成で, HTMLタグ（<p>, <h3>, <ul>, <li>）を用いてまとめて出力してください。
 ・【はじめに】: 読者の関心を引き、どのような補助金かを簡潔に解説（<p>2〜3文）
 ・【詳細解説】: どのような企業・事業者におすすめか、申請・導入のメリット、活用事例を具体的に解説（<h3>や<ul>を使用）
 ・【まとめ】: 申請に向けた注意点やアドバイス（<p>2〜3文）
@@ -244,27 +263,28 @@ try:
         )
 
         # ---------------------------------------------------------
-        # カード下部メタ情報・バッジ群の組み立て（マージ・最適化部分）
+        # カード下部メタ情報・バッジ群の組み立て
+        # 並び順：制度名 -> 上限額バッジ -> 補助率バッジ -> 対象地域 -> 受付終了日
         # ---------------------------------------------------------
         meta_items = []
 
-        # 1. 制度名
+        # 1. 制度名（存在する場合）
         if inst_name and inst_name.lower() != "none":
             meta_items.append(f"<span><strong>制度名:</strong> {inst_name}</span>")
 
-        # 2. 対象地域
-        meta_items.append(f'<span>対象地域: <span class="tag">{target_area}</span></span>')
-
-        # 3. 受付終了日
-        meta_items.append(f'<span>受付終了日: <span class="date-tag">{end_date}</span></span>')
-
-        # 4. 金額上限バッジ（データが存在する場合のみ）
+        # 2. 金額上限バッジ（対象地域・受付終了日の「手前」に配置）
         if amount_badge:
             meta_items.append(amount_badge)
 
-        # 5. 補助率バッジ（データが存在する場合のみ）
+        # 3. 補助率バッジ（対象地域・受付終了日の「手前」に配置）
         if rate_badge:
             meta_items.append(rate_badge)
+
+        # 4. 対象地域
+        meta_items.append(f'<span>対象地域: <span class="tag">{target_area}</span></span>')
+
+        # 5. 受付終了日
+        meta_items.append(f'<span>受付終了日: <span class="date-tag">{end_date}</span></span>')
 
         meta_html = "\n                ".join(meta_items)
 
@@ -286,7 +306,7 @@ try:
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(index_html)
 
-    print("金額・補助率の自動判定ロジックを含む更新処理が正常に完了しました。")
+    print("HTMLタグ除外処理およびバッジ優先配置を含む更新が正常に完了しました。")
 
 except Exception as e:
     print(f"エラーが発生しました: {e}")
